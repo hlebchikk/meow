@@ -6,7 +6,7 @@ hastag = "#"
 
 stroka = input("Введите строку:")
 
-trimming_hastag = stroka[:140]
+trimming_hastag = stroka[:139]
 title_stroka = trimming_hastag.title()
 delete_punctuation = title_stroka.translate(str.maketrans("", "", string.punctuation)).replace(" ", "")
 add_hastag = hastag+delete_punctuation
