@@ -8,10 +8,7 @@ driver.get("https://www.work.ua/jobs-odesa-it")
 
 vacancy_container = driver.find_element(By.ID, "pjax-jobs-list")
 
-vacancy_titles = vacancy_container.find_elements(By.CLASS_NAME, "my-0")
-
-raw_salary_elements = vacancy_container.find_elements(By.CLASS_NAME, "strong-600")
-
+vacancy_cards = vacancy_container.find_elements(By.CLASS_NAME, "card")
 
 cyrillic_letters = "абвгґдеєжзиіїйклмнопрстуфхцчшщьюя"
 letters = cyrillic_letters + cyrillic_letters.upper()
@@ -20,11 +17,19 @@ letters = cyrillic_letters + cyrillic_letters.upper()
 punct_to_remove = punctuation.replace("-", " ")
 
 #Сюда будут складываться все зарплаты
-salaries = []
+raw_salaries = []
 
+for i in vacancy_cards:
+    strong_600 = i.find_elements(By.CLASS_NAME, "strong-600")
+    for j in strong_600:
+        if "грн" not in j.text:
+            continue
+        raw_salaries.append(j.text)
+
+salaries = []
 # Обрабатываем каждый элемент с "зарплатой"
-for i in raw_salary_elements:
-    text = i.text.strip()
+for i in raw_salaries:
+    text = i.strip()
 
     # Удаляем неразрывные пробелы и обычные пробелы
     text = text.replace('\u202f', '').replace('\u2009', '').replace(' ', '')
