@@ -1,6 +1,7 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from string import punctuation
 
 
@@ -8,14 +9,40 @@ class WorkParser:
     def __init__(self, url):
         self.url = url
         self.driver = webdriver.Chrome()
-        self.vacancy_cards = []
+        #self.vacancy_cards = []
+        self.raw_salaries = []
         self.middle_salary = 0
 
-    def open_page(self):
+    def scroll_through_pages(self):
+        while True:
+            WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "pjax-jobs-list")))
+
+            vacancy_container = self.driver.find_element(By.ID, "pjax-jobs-list")
+            cards = vacancy_container.find_elements(By.CLASS_NAME, "wordwrap")
+
+            for i in cards:
+                try:
+                    box_salaries = i.find_elements(By.CLASS_NAME, "strong-600")
+                    for j in box_salaries:
+                        if "грн" not in j.text:
+                            continue
+                        self.raw_salaries.append(j.text)
+                except Exception as ex:
+                    print("Ошибка доступа к элементу:", ex)
+
+            try:
+                next_page = self.driver.find_element(By.LINK_TEXT, "Наступна")
+                if "disabled" in next_page.get_attribute("class"):
+                    break
+                next_page.click()
+
+                WebDriverWait(self.driver, 10).until(EC.staleness_of(cards[0]))
+            except:
+                break
+
+    def collect_vacancy_cards(self):
         self.driver.get(self.url)
-        WebDriverWait(self.driver, 3)
-        vacancy_container = self.driver.find_element(By.ID, "pjax-jobs-list")
-        self.vacancy_cards = vacancy_container.find_elements(By.CLASS_NAME, "card")
+        self.scroll_through_pages()
 
     def remove_symbol(self, text):
         cyrillic_letters = "абвгґдеєжзиіїйклмнопрстуфхцчшщьюя"
@@ -23,29 +50,20 @@ class WorkParser:
         punct_to_remove = punctuation.replace("-", " ")
         symbols = ['\u202f', '\u2009', ' ']
 
-        for s in symbols:
-            text = text.replace(s, '')
+        for i in symbols:
+            text = text.replace(i, '')
         for l in text:
             if l in letters or l in punct_to_remove:
                 text = text.replace(l, '')
         return text
 
     def calculate_average_salary(self):
-        raw_salaries = []
-
-        for card in self.vacancy_cards:
-            strong_600 = card.find_elements(By.CLASS_NAME, "strong-600")
-            for el in strong_600:
-                if "грн" not in el.text:
-                    continue
-                raw_salaries.append(el.text)
-
         salaries = []
 
-        for text in raw_salaries:
-            text = text.strip()
-            if not any(ch.isdigit() for ch in text):
-                continue
+        for i in self.raw_salaries:
+            text = i.strip()
+            # if not any(c.isdigit() for c in text):
+            #     continue
 
             text = text.replace("–", "-")
             text = self.remove_symbol(text)
@@ -65,6 +83,7 @@ class WorkParser:
                 salaries.append(salary)
 
         print(salaries)
+        print(len(salaries))
 
         if salaries:
             self.middle_salary = round(sum(salaries) / len(salaries))
@@ -72,8 +91,9 @@ class WorkParser:
             self.middle_salary = 0
 
     def run(self):
-        self.open_page()
+        self.collect_vacancy_cards()
         self.calculate_average_salary()
+        self.scroll_through_pages()
         self.close()
         print(f"Средняя зарплата: {self.middle_salary}")
 
